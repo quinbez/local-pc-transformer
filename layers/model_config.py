@@ -6,3 +6,4 @@ class ModelConfig:
     n_embed = 64            
     block_size = 128          
     dropout = 0.1
+    num_heads = 4
