@@ -14,6 +14,6 @@ class Output(nn.Module):
         self.fc = nn.Linear(config.n_embed, config.vocab_size, bias=False)
         self.pc_layer = PCOutput(T=config.T, local_lr=config.local_lr)
 
-    def forward(self, x, target, t: int = 0, requires_update: bool = True):
-        mu = self.pc_layer(self.fc, x, target, t, requires_update)
+    def forward(self, target, t, requires_update: bool = True):
+        mu = self.pc_layer(layer=self.fc, target=target, t=t, requires_update=requires_update)
         return mu
