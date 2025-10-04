@@ -18,7 +18,7 @@ class Embedding(nn.Module):
             local_lr=config.local_lr,
         )
 
-    def forward(self, input_ids, position_ids, target, t=0, requires_update=True):
+    def forward(self, input_ids, position_ids, target, t, requires_update=True):
         assert position_ids is not None, "position_ids must be provided"
 
         mu = self.pc_layer(
