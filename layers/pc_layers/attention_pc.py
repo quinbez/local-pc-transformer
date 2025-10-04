@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..model_config import ModelConfig as config
-from utils.pc_utils import finalize_step
+from utils.pc_utils import finalize_step, init_x
+from typing import Optional
 
 class PCAttention(nn.Module):
     """
@@ -18,8 +19,11 @@ class PCAttention(nn.Module):
         self.local_lr = local_lr
         self._energy = 0.0
         self._errors = []
+        self.x=None
 
-    def forward(self, q_proj, k_proj, v_proj, o_proj, x, target, layer_norm, t: int, requires_update: bool):
+    def forward(self, q_proj, k_proj, v_proj, o_proj, target, layer_norm, t: int, requires_update: bool, x: Optional[torch.Tensor] = None):
+        x = self.get_x()  # use self.x from previous step
+
         B, S, D = x.shape
         num_heads = config.num_heads
         head_dim = D // num_heads
@@ -69,9 +73,11 @@ class PCAttention(nn.Module):
         energy, step_errors = finalize_step(mu, target, error, t, "attention")
         self._energy += energy
         self._errors.extend(step_errors)
+        self.x=x
 
         return mu
         
     def get_energy(self): return self._energy
+    def get_x(self): return self.x
     def clear_energy(self): self._energy = 0.0; self._errors = []
     def get_errors(self): return self._errors
