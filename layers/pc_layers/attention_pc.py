@@ -63,7 +63,6 @@ class PCAttention(nn.Module):
         dE_dattn_probs = torch.matmul(dE_dcontext_heads, V.transpose(-2, -1))  # [B, H, S, S]
         
         # Gradient through softmax (softmax derivative)
-        # ∂softmax(x_i)/∂x_j = softmax(x_i)(δ_ij - softmax(x_j))
         dE_dscores = attn_probs * (dE_dattn_probs - torch.sum(dE_dattn_probs * attn_probs, dim=-1, keepdim=True))
         dE_dscores = dE_dscores / (head_dim ** 0.5)  
         dE_dscores = dE_dscores.masked_fill(causal_mask, 0)  
@@ -72,7 +71,6 @@ class PCAttention(nn.Module):
         dE_dK_heads = torch.matmul(dE_dscores.transpose(-2, -1), Q)  # [B, H, S, D/H]
         dE_dV_heads = torch.matmul(attn_probs.transpose(-2, -1), dE_dcontext_heads)  # [B, H, S, D/H]
         
-        # Reshape back to [B, S, D] for weight updates
         dE_dQ = dE_dQ_heads.transpose(1, 2).contiguous().view(B, S, D)  # [B, S, D]
         dE_dK = dE_dK_heads.transpose(1, 2).contiguous().view(B, S, D)  # [B, S, D] 
         dE_dV = dE_dV_heads.transpose(1, 2).contiguous().view(B, S, D)  # [B, S, D]
@@ -82,23 +80,28 @@ class PCAttention(nn.Module):
         dE_dx_V = torch.matmul(dE_dV, v_proj.weight)  # [B, S, D]
         dE_dx = dE_dx_Q + dE_dx_K + dE_dx_V  # [B, S, D]
         
+        # Update neural activity
+        x = x - self.local_lr * dE_dx 
         
-        x -= self.local_lr * dE_dx 
         if requires_update:
             with torch.no_grad():
                 dW_o = torch.einsum("bsd,bse->de", context, dE_dmu) 
-                
-                dW_k = torch.einsum("bsd,bse->de", x_norm, dE_dK)
-                dW_q = torch.einsum("bsd,bse->de", x_norm, dE_dQ)
-                dW_v = torch.einsum("bsd,bse->de", x_norm, dE_dV)
-                
                 o_proj.weight.data -= torch.clamp(self.local_lr * dW_o, -config.clamp_value, config.clamp_value)
 
-              
+                # Reshape gradients and inputs for head-specific computation
+                dE_dQ_heads_flat = dE_dQ_heads.permute(0, 2, 1, 3).contiguous().view(B * S, num_heads * head_dim)  # [B*S, D]
+                dE_dK_heads_flat = dE_dK_heads.permute(0, 2, 1, 3).contiguous().view(B * S, num_heads * head_dim)  # [B*S, D]
+                dE_dV_heads_flat = dE_dV_heads.permute(0, 2, 1, 3).contiguous().view(B * S, num_heads * head_dim)  # [B*S, D]
+                x_norm_flat = x_norm.view(B * S, D)  # [B*S, D]
+                
+                dW_q = torch.einsum("bd,be->de", x_norm_flat, dE_dQ_heads_flat) / (B * S)
+                dW_k = torch.einsum("bd,be->de", x_norm_flat, dE_dK_heads_flat) / (B * S)
+                dW_v = torch.einsum("bd,be->de", x_norm_flat, dE_dV_heads_flat) / (B * S)
+                
+                # Apply updates
                 q_proj.weight.data -= torch.clamp(self.local_lr * dW_q, -config.clamp_value, config.clamp_value)
                 k_proj.weight.data -= torch.clamp(self.local_lr * dW_k, -config.clamp_value, config.clamp_value)
                 v_proj.weight.data -= torch.clamp(self.local_lr * dW_v, -config.clamp_value, config.clamp_value)
-        # Finalize
         energy, step_errors = finalize_step(mu, target, error, t, "attention")
         self._energy += energy
         self._errors.extend(step_errors)
