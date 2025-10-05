@@ -64,9 +64,9 @@ class PCMLP(nn.Module):
                  # fc1 gradient: back_err^T * x_norm
                 delta_W1 = torch.einsum("bse,bsd->ed", back_err, x_norm) / (B * S)
 
-                layer1.weight.data -= torch.clamp(self.local_lr * delta_W1,
+                layer1.weight.data += torch.clamp(self.local_lr * delta_W1,
                                               -config.clamp_value, config.clamp_value)
-                layer2.weight.data -= torch.clamp(self.local_lr * delta_W2,
+                layer2.weight.data += torch.clamp(self.local_lr * delta_W2,
                                               -config.clamp_value, config.clamp_value)
 
         # Finalize
