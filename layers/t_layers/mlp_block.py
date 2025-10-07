@@ -13,16 +13,21 @@ class MLPBlock(nn.Module):
         self.fc1 = nn.Linear(config.n_embed, 4 * config.n_embed, bias=False)
         self.fc2 = nn.Linear(4 * config.n_embed, config.n_embed, bias=False)
 
-        self.rms_norm1 = nn.RMSNorm(4 * config.n_embed)
-        self.rms_norm2 = nn.RMSNorm(config.n_embed)
+        self.rms_norm = nn.RMSNorm(4 * config.n_embed)
         self.dropout = nn.Dropout(config.dropout)
 
         self.pc_fc = PCMLP(T=config.T, local_lr=config.local_lr)
 
-    def forward(self, target, t, requires_update: bool = True):
-        mu2, mu1 = self.pc_fc({'fc1': self.fc1, 'fc2': self.fc2}, target, self.rms_norm2, t, requires_update)
+    def forward(self, target, step, requires_update: bool = True):
+        pred, act = self.pc_fc(
+            layers = {'fc1': self.fc1, 'fc2': self.fc2}, 
+            target = target, 
+            layer_norm = self.rms_norm, 
+            step = step, 
+            requires_update = requires_update
+        )
 
         if self.training:
-            mu2 = self.dropout(mu2)
+            pred = self.dropout(pred)
 
-        return mu2
+        return pred, act
