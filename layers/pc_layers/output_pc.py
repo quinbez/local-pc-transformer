@@ -20,28 +20,33 @@ class PCOutput(nn.Module):
         self._errors = []
         self.x=None
 
-    def forward(self, layer: nn.Linear, target: torch.Tensor, t: int = 0, requires_update: bool = True, x: Optional[torch.Tensor] = None):
-        x = self.get_x()  # use self.x from previous step
-
+    def forward(
+            self,
+            layer: nn.Linear,
+            target: torch.Tensor,
+            step: int = 0,
+            requires_update: bool = True,
+        ):
+        x = self.x
         mu = layer(x)
         mu = torch.softmax(mu, dim=-1)
 
-        # Error
+        # ---- Prediction error ----
         error = target - mu
-        dE_dμ = -mu * (error - (mu * error).sum(dim=-1, keepdim=True))  # (B, S, V)
-        dE_dx = torch.einsum("bsv,vd->bsd", dE_dμ, layer.weight)
+        dE_dmu = -error
+
+        dE_dx = torch.einsum("bsd,vd->bsv", dE_dmu, layer.weight) 
+
         x= x - self.local_lr * dE_dx
 
         if requires_update:
             with torch.no_grad():
-                B, S, D = x.shape
-                delta_W = torch.einsum("bsv,bsd->vd", dE_dμ, x)
-                # delta_W = delta_W.permute(1, 0) 
-                # delta_W /= (B * S)
-                
-                layer.weight.data -= torch.clamp(self.local_lr * delta_W, -config.clamp_value, config.clamp_value)
+                delta_W = torch.einsum("bsv,bsd->vd", dE_dmu, x)
+                layer.weight.data -= torch.clamp(
+                    self.local_lr * delta_W, -config.clamp_value, config.clamp_value
+                )
 
-        energy, step_errors = finalize_step(mu, target, error, t, "output")
+        energy, step_errors = finalize_step(mu, target, error, step, "output")
         self._energy += energy
         self._errors.extend(step_errors)
         self.x=x
