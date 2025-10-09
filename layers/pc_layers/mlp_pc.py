@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..model_config import ModelConfig as config
-from utils.pc_utils import finalize_step, init_x
-from typing import Optional
+from utils.pc_utils import finalize_step
 
 class PCMLP(nn.Module):
     """
@@ -23,6 +22,7 @@ class PCMLP(nn.Module):
         self.x = None
 
     def forward(self, 
+                x: torch.Tensor,
                 layers: dict[nn.Linear], 
                 target: torch.Tensor, 
                 layer_norm: nn.Module = None, 
@@ -30,7 +30,6 @@ class PCMLP(nn.Module):
                 requires_update: bool = True, 
         ):
 
-        x = self.x
         fc1 = layers['fc1']
         fc2 = layers['fc2']
 

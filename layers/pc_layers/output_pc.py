@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 from ..model_config import ModelConfig as config
-from utils.pc_utils import finalize_step, init_x
-from typing import Optional
+from utils.pc_utils import finalize_step
 
 class PCOutput(nn.Module):
     """
@@ -18,30 +17,32 @@ class PCOutput(nn.Module):
         self.local_lr = local_lr
         self._energy = 0.0
         self._errors = []
-        self.x=None
 
     def forward(
             self,
+            x: torch.Tensor,
             layer: nn.Linear,
             target: torch.Tensor,
+            layer_norm: nn.Module = None,
             step: int = 0,
             requires_update: bool = True,
         ):
-        x = self.x
-        mu = layer(x)
+        
+        x_norm = layer_norm(x)
+        mu = layer(x_norm)
         mu = torch.softmax(mu, dim=-1)
 
         # ---- Prediction error ----
         error = target - mu
         dE_dmu = -error
 
-        dE_dx = torch.einsum("bsd,vd->bsv", dE_dmu, layer.weight) 
+        dE_dx = torch.einsum("bsv,vd->bsd", dE_dmu, layer.weight) 
 
-        x= x - self.local_lr * dE_dx
+        x_new= x_norm - self.local_lr * dE_dx
 
         if requires_update:
             with torch.no_grad():
-                delta_W = torch.einsum("bsv,bsd->vd", dE_dmu, x)
+                delta_W = torch.einsum("bsv,bsd->vd", dE_dmu, x_norm)
                 layer.weight.data -= torch.clamp(
                     self.local_lr * delta_W, -config.clamp_value, config.clamp_value
                 )
@@ -49,7 +50,7 @@ class PCOutput(nn.Module):
         energy, step_errors = finalize_step(mu, target, error, step, "output")
         self._energy += energy
         self._errors.extend(step_errors)
-        self.x=x
+        self.x=x_new
         return mu
     
     def get_energy(self): return self._energy

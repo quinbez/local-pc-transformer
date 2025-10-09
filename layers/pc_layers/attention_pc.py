@@ -19,10 +19,10 @@ class PCAttention(nn.Module):
         self.local_lr = local_lr
         self._energy = 0.0
         self._errors = []
-        self.x=None
 
     def forward(
             self, 
+            x: torch.Tensor,
             q_proj: nn.Linear,
             k_proj: nn.Linear,
             v_proj: nn.Linear,
@@ -32,8 +32,6 @@ class PCAttention(nn.Module):
             step: int,
             requires_update: bool
         ):
-        
-        x = self.x
 
         B, S, D = x.shape
         num_heads = config.num_heads
