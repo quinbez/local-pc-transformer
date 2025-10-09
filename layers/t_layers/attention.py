@@ -25,8 +25,9 @@ class Attention(nn.Module):
             local_lr=config.local_lr,
         )
 
-    def forward(self, target, t, requires_update=True):
+    def forward(self, x, target, t, requires_update=True):
         mu = self.pc_layer(
+            x,
             self.q_proj,
             self.k_proj,
             self.v_proj,

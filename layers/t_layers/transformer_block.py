@@ -12,6 +12,19 @@ class PCTransformerBlock(nn.Module):
         self.mlp = MLPBlock(config)
 
     def forward(self,target_mlp, target_attn, t, requires_update=True):
-        mu = self.mlp(target_mlp, t, requires_update)
-        self.attention(target_attn, t, requires_update)
-        return mu
+        
+        mu_mlp, _ = self.mlp(
+            x = self.mlp.pc_fc.get_x(),
+            target=target_mlp,
+            step=t,
+            requires_update=requires_update
+        )
+        
+        mu_attn = self.attention(
+            x=self.attention.pc_layer.get_x(), 
+            target=target_attn,
+            t=t,
+            requires_update=requires_update
+        )
+
+        return mu_mlp, mu_attn
