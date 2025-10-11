@@ -19,6 +19,7 @@ def train(model, dataloader):
     model.train()
 
     total_energy = 0.0
+    total_ce_loss = 0.0
     batch_count = 0
 
     for batch_idx, batch in enumerate(dataloader, start=1):
@@ -33,6 +34,8 @@ def train(model, dataloader):
             target_ids.view(-1),
             ignore_index=0
         )
+
+        total_ce_loss += ce_loss.item()
 
         layer_energies = []
         for module in model.modules():
@@ -57,7 +60,8 @@ def train(model, dataloader):
                 module.clear_errors()
 
     avg_energy = total_energy / batch_count if batch_count > 0 else 0.0
-    avg_perplexity = torch.exp(torch.tensor(avg_energy))
+    avg_ce_loss = total_ce_loss / batch_count if batch_count > 0 else 0.0
+    avg_perplexity = torch.exp(torch.tensor(avg_ce_loss)).item()
 
     return avg_energy, avg_perplexity
 
