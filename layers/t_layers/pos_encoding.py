@@ -25,4 +25,7 @@ class SinusoidalPE(nn.Module):
         position_ids: (batch, seq_len)
         returns: (batch, seq_len, n_embed)
         """
-        return self.pe[:, position_ids, :]
+        B, S = position_ids.shape
+        pos_embeddings = self.pe[:, :S, :].expand(B, -1, -1)
+        
+        return pos_embeddings
