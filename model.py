@@ -19,19 +19,23 @@ class GPTPCModel(nn.Module):
         T = self.config.T
         vocab_size = self.config.vocab_size
         
+        device = input_ids.device
+
         # ---- Initialize latent states ----
-        self.output.pc_layer.x = x_init(B, S, D, device=input_ids.device)
+        self.output.pc_layer.x = x_init(B, S, D, device=device)
         
         for block in self.block:
-            block.mlp.pc_fc.x = x_init(B, S, D, device=input_ids.device)
-            block.attention.pc_layer.x = x_init(B, S, D, device=input_ids.device)
+            block.mlp.pc_fc.x = x_init(B, S, D, device=device)
+            block.attention.pc_layer.x = x_init(B, S, D, device=device)
 
         # ---- Clear energies before inference ----
         for module in self.modules():
             if hasattr(module, "clear_energy"):
                 module.clear_energy()
+            if hasattr(module, "clear_errors"):
+                module.clear_errors()
 
-        target_onehot = nn.functional.one_hot(target_ids, num_classes=vocab_size).float().to(input_ids.device)
+        target_onehot = nn.functional.one_hot(target_ids, num_classes=vocab_size).float().to(device)
 
         # ---- Iterative top-down PC ----
         for t in range(T):

@@ -14,6 +14,7 @@ class PCEmbed(nn.Module):
     """
     def __init__(self, T: int, local_lr: float):
         super().__init__()
+        self.x = None
         self.T = T
         self.local_lr = local_lr
         self._energy = 0.0
@@ -61,3 +62,4 @@ class PCEmbed(nn.Module):
     def get_energy(self): return self._energy
     def clear_energy(self): self._energy = 0.0; self._errors = []
     def get_errors(self): return self._errors
+    def clear_errors(self): self._errors = []

@@ -79,3 +79,4 @@ class PCMLP(nn.Module):
     def get_x(self): return self.x
     def clear_energy(self): self._energy = 0.0; self._errors = []
     def get_errors(self): return self._errors
+    def clear_errors(self): self._errors = []

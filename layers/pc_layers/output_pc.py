@@ -13,6 +13,7 @@ class PCOutput(nn.Module):
     """
     def __init__(self, T: int, local_lr: float):
         super().__init__()
+        self.x = None
         self.T = T
         self.local_lr = local_lr
         self._energy = 0.0
@@ -30,10 +31,10 @@ class PCOutput(nn.Module):
         
         x_norm = layer_norm(x)
         mu = layer(x_norm)
-        mu = torch.softmax(mu, dim=-1)
+        mu_probs = torch.softmax(mu, dim=-1)
 
         # ---- Prediction error ----
-        error = target - mu
+        error = target - mu_probs
         dE_dmu = -error
 
         dE_dx = torch.einsum("bsv,vd->bsd", dE_dmu, layer.weight) 
@@ -47,7 +48,7 @@ class PCOutput(nn.Module):
                     self.local_lr * delta_W, -config.clamp_value, config.clamp_value
                 )
 
-        energy, step_errors = finalize_step(mu, target, error, step, "output")
+        energy, step_errors = finalize_step(mu_probs, target, error, step, "output")
         self._energy += energy
         self._errors.extend(step_errors)
         self.x=x_new
@@ -57,3 +58,4 @@ class PCOutput(nn.Module):
     def get_x(self): return self.x
     def clear_energy(self): self._energy = 0.0; self._errors = []
     def get_errors(self): return self._errors
+    def clear_errors(self): self._errors = []

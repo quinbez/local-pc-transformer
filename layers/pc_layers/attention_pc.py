@@ -15,6 +15,7 @@ class PCAttention(nn.Module):
     """
     def __init__(self, T: int, local_lr: float):
         super().__init__()
+        self.x = None
         self.T = T
         self.local_lr = local_lr
         self._energy = 0.0
@@ -130,3 +131,4 @@ class PCAttention(nn.Module):
     def get_x(self): return self.x
     def clear_energy(self): self._energy = 0.0; self._errors = []
     def get_errors(self): return self._errors
+    def clear_errors(self): self._errors = []
