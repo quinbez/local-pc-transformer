@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from ..model_config import ModelConfig as config
 from utils.pc_utils import finalize_step
 from typing import Optional
+from .lateral_connection import LateralConnection
 
 class PCAttention(nn.Module):
     """
@@ -21,6 +22,12 @@ class PCAttention(nn.Module):
         self._energy = 0.0
         self._errors = []
 
+        self.lateral_conn = LateralConnection(
+            n_units=config.n_embed,
+            connection_type='inhibitory',
+            strength=0.05
+        )
+        
     def forward(
             self, 
             x: torch.Tensor,
@@ -53,7 +60,8 @@ class PCAttention(nn.Module):
         
         context = torch.matmul(attn_probs, V)   # [B, H, S, D/H]
         context = context.transpose(1, 2).contiguous().view(B, S, D)    # [B, S, D]
-       
+        context = self.lateral_conn(context)
+
         # ----- Output prediction -----
         mu = o_proj(context)
         

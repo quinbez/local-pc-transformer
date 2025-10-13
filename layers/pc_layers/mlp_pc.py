@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from ..model_config import ModelConfig as config
 from utils.pc_utils import finalize_step
+from .lateral_connection import LateralConnection
 
 class PCMLP(nn.Module):
     """
@@ -21,6 +22,12 @@ class PCMLP(nn.Module):
         self._errors = []
         self.x = None
 
+        self.lateral_conn = LateralConnection(
+            n_units=4 * config.n_embed,  # Applied to hidden layer
+            connection_type='excitatory',
+            strength=0.03
+        )
+        
     def forward(self, 
                 x: torch.Tensor,
                 layers: dict[nn.Linear], 
@@ -38,6 +45,7 @@ class PCMLP(nn.Module):
         
         # Forward pass
         h = fc1(x_norm)                 # h = W1 x
+        h = self.lateral_conn(h)
         act = F.gelu(h)                 # a = GELU(h)
         pred = fc2(act)                 # mu = W2 a
 

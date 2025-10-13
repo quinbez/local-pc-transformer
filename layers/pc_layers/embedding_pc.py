@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from ..model_config import ModelConfig as config
 from utils.pc_utils import finalize_step
-
+from .lateral_connection import LateralConnection
 class PCEmbed(nn.Module):
     """
     Predictive Coding Layer for Embedding.
@@ -20,6 +20,12 @@ class PCEmbed(nn.Module):
         self._energy = 0.0
         self._errors = []
 
+        self.lateral_conn = LateralConnection(
+            n_units=config.n_embed,
+            connection_type='inhibitory',
+            strength=0.02
+        )
+        
     def forward(self, word_layer, pos_layer, input_ids, position_ids, target, layer_norm, t: int, requires_update: bool):
         input_ids = torch.clamp(input_ids, max=config.vocab_size - 1)
         position_ids = torch.clamp(position_ids, max=config.block_size - 1)
@@ -28,6 +34,7 @@ class PCEmbed(nn.Module):
         word_emb = word_layer(input_ids)
         pos_emb = pos_layer(position_ids).detach()
         mu = word_emb + pos_emb
+        mu = self.lateral_conn(mu)
         mu = layer_norm(mu)
         mu = nn.functional.gelu(mu)
         
