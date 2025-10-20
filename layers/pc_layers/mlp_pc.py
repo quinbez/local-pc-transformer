@@ -53,9 +53,12 @@ class PCMLP(nn.Module):
         error = target - pred
 
         # Local Updates
-        delta_x = torch.einsum("bsd,dh->bsh", error, fc2.weight)
-        delta_x = torch.einsum("bsh,hd->bsd", delta_x, fc1.weight)
-        x = x + self.local_lr * delta_x
+        dE_dact = -torch.einsum("bsd,de->bse", error, fc2.weight)
+        gelu_grad = torch.sigmoid(1.702 * h)
+        dE_dh = dE_dact * gelu_grad
+        dE_dx = torch.einsum("bse,ed->bsd", dE_dh, fc1.weight)
+
+        self.x = x - self.local_lr * dE_dx
 
         if requires_update:
            with torch.no_grad():

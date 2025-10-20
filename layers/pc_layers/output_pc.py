@@ -39,7 +39,7 @@ class PCOutput(nn.Module):
 
         dE_dx = torch.einsum("bsv,vd->bsd", dE_dmu, layer.weight) 
 
-        x_new= x_norm - self.local_lr * dE_dx
+        self.x = x - self.local_lr * dE_dx
 
         if requires_update:
             with torch.no_grad():
@@ -51,7 +51,7 @@ class PCOutput(nn.Module):
         energy, step_errors = finalize_step(mu_probs, target, error, step, "output")
         self._energy += energy
         self._errors.extend(step_errors)
-        self.x=x_new
+      
         return mu
     
     def get_energy(self): return self._energy

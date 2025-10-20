@@ -97,8 +97,10 @@ class PCAttention(nn.Module):
             + torch.matmul(dE_dV, v_proj.weight)
         )
         
+        assert dE_dx.shape == x.shape, f"Shape mismatch: dE_dx {dE_dx.shape} vs x {x.shape}"
+
         # ---- Local updates ----
-        x = x - self.local_lr * dE_dx 
+        self.x = x - self.local_lr * dE_dx 
         
         if requires_update:
             with torch.no_grad():
@@ -131,7 +133,6 @@ class PCAttention(nn.Module):
         energy, step_errors = finalize_step(mu, target, error, step, "attention")
         self._energy += energy
         self._errors.extend(step_errors)
-        self.x=x
 
         return mu
         
