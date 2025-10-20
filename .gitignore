@@ -2,3 +2,4 @@ __pycache__
 encoded/
 tokenizer.json
 layers/test.py
+venv/
