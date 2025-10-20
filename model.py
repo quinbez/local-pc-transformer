@@ -40,7 +40,7 @@ class GPTPCModel(nn.Module):
         # ---- Iterative top-down PC ----
         for t in range(T):
             logits = self.output(
-                x=self.output.pc_layer.get_x(),
+                x=self.output.pc_layer.x,
                 target=target_onehot,
                 step=t,
                 requires_update=requires_update
@@ -50,11 +50,11 @@ class GPTPCModel(nn.Module):
                 block = self.block[idx]
 
                 if idx == len(self.block) - 1:         # Last block
-                    target_mlp = self.output.pc_layer.get_x()
+                    target_mlp = self.output.pc_layer.x
                 else:
-                    target_mlp = self.block[idx + 1].attention.pc_layer.get_x()     # Earlier blocks
+                    target_mlp = self.block[idx + 1].attention.pc_layer.x    # Earlier blocks
 
-                target_attn = block.mlp.pc_fc.get_x()
+                target_attn = block.mlp.pc_fc.x
                 
                 mu_mlp, mu_attn = block(
                     target_mlp=target_mlp,
@@ -63,7 +63,7 @@ class GPTPCModel(nn.Module):
                     requires_update=requires_update
                 )
             
-            target_embed = self.block[0].attention.pc_layer.get_x()
+            target_embed = self.block[0].attention.pc_layer.x
             self.embedding(input_ids, position_ids, target_embed, t, requires_update)
 
         return logits
